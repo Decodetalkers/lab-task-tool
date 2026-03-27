@@ -12,4 +12,5 @@ regex.workspace = true
 serde = "1.0.228"
 thiserror.workspace = true
 tokio.workspace = true
+which = "8.0.2"
 zbus.workspace = true

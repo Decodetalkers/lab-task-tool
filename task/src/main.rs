@@ -2,6 +2,7 @@ mod cli;
 use std::{sync::OnceLock, vec};
 
 use clap::Parser;
+use which::which;
 use zbus::{
     proxy,
     zvariant::{self, OwnedObjectPath, OwnedValue, Type, Value},
@@ -175,7 +176,8 @@ pub async fn launch(id: &str, cmd: &[String], description: &str) -> anyhow::Resu
 async fn main() {
     let cli = Cli::parse();
     let task = cli.task;
-    let commands = cli.commands;
+    let mut commands = cli.commands;
+    commands[0] = which(&commands[0]).unwrap().to_string_lossy().to_string();
     launch(
         &task,
         &commands,
