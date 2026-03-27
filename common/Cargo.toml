@@ -1,0 +1,10 @@
+[package]
+name = "common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+regex.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]

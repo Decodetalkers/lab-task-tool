@@ -1,0 +1,12 @@
+[package]
+name = "lab-monitor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+quick-xml.workspace = true
+regex.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+zbus.workspace = true
+common.workspace = true

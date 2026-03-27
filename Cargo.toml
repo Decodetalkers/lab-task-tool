@@ -1,0 +1,16 @@
+[workspace]
+resolver = "3"
+members = ["./monitor", "common", "task"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+common = { path = "./common", version = "0.1.0" }
+quick-xml = "0.39.2"
+thiserror = "2.0.18"
+tokio = { version = "1.50.0", features = ["full"] }
+zbus = { version = "5.14.0", features = ["tokio"] }
+regex = "1.12.3"
+chrono = "0.4.44"

@@ -1,0 +1,15 @@
+[package]
+name = "lab-task"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.102"
+clap = { version = "4.6.0", features = ["derive"] }
+common.workspace = true
+quick-xml.workspace = true
+regex.workspace = true
+serde = "1.0.228"
+thiserror.workspace = true
+tokio.workspace = true
+zbus.workspace = true
