@@ -12,3 +12,5 @@ zbus.workspace = true
 common.workspace = true
 cli-table = "0.5.0"
 anyhow = "1.0.102"
+dialoguer.workspace = true
+clap.workspace = true

@@ -1,11 +1,17 @@
+mod cli;
+
+use clap::Parser;
 use cli_table::format::Justify;
 use cli_table::{Cell, CellStruct, Style, Table};
+use dialoguer::FuzzySelect;
+use dialoguer::theme::ColorfulTheme;
 use zbus::proxy;
 
 use common::*;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use std::sync::OnceLock;
+use zbus::zvariant::OwnedObjectPath;
 
 static SESSION: OnceLock<zbus::Connection> = OnceLock::new();
 
@@ -63,25 +69,35 @@ pub struct UnitInfo {
     id: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct SystemTask {
+#[derive(Debug)]
+pub struct SystemTask<'a> {
     info: TaskInfo,
     active_state: String,
+    dbus: Systemd1UnitProxy<'a>,
+}
+impl<'a> SystemTask<'a> {
+    pub async fn try_restart(&self) {
+        let _ = self.dbus.try_restart("replace").await;
+    }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct UnitInterfaceInfoVec(Vec<SystemTask>);
+#[derive(Debug, Default)]
+pub struct UnitInterfaceInfoVec<'a>(Vec<SystemTask<'a>>);
 
-impl UnitInterfaceInfoVec {
+impl<'a> UnitInterfaceInfoVec<'a> {
     pub fn new() -> Self {
         Self(Vec::new())
+    }
+
+    pub fn titles(&'_ self) -> impl Iterator<Item = &'_ str> {
+        self.0.iter().map(|t| t.info.task.as_str()).into_iter()
     }
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &SystemTask> {
+    pub fn iter(&'_ self) -> impl Iterator<Item = &'_ SystemTask<'_>> {
         self.0.iter()
     }
 
@@ -104,6 +120,7 @@ impl UnitInterfaceInfoVec {
             unitvec.push(SystemTask {
                 info: task,
                 active_state,
+                dbus: unitbus,
             });
         }
         Ok(Self(unitvec))
@@ -132,29 +149,62 @@ trait Systemd1Unit {
     fn id(&self) -> zbus::Result<String>;
     #[zbus(property)]
     fn active_state(&self) -> zbus::Result<String>;
+
+    fn try_restart(&self, mode: &str) -> zbus::Result<OwnedObjectPath>;
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let arg = cli::Cli::parse();
+    use cli::Commands;
     let infos = UnitInterfaceInfoVec::refresh().await?;
-    let display = infos
-        .iter()
-        .map(|info| {
-            vec![
-                info.info.task.clone().cell(),
-                info.info.time.clone().cell(),
-                info.active_state.clone().cell(),
-            ]
-        })
-        .collect::<Vec<Vec<CellStruct>>>()
-        .table()
-        .title(vec![
-            "Task".cell().justify(Justify::Left).bold(true),
-            "Time".cell().justify(Justify::Center).bold(true),
-            "Status".cell().justify(Justify::Center).bold(true),
-        ])
-        .bold(true)
-        .display()?;
+    match arg.command {
+        Commands::Display => {
+            let display = infos
+                .iter()
+                .map(|info| {
+                    vec![
+                        info.info.task.clone().cell(),
+                        info.info.time.clone().cell(),
+                        info.active_state.clone().cell(),
+                    ]
+                })
+                .collect::<Vec<Vec<CellStruct>>>()
+                .table()
+                .title(vec![
+                    "Task".cell().justify(Justify::Left).bold(true),
+                    "Time".cell().justify(Justify::Center).bold(true),
+                    "Status".cell().justify(Justify::Center).bold(true),
+                ])
+                .bold(true)
+                .display()?;
 
-    println!("{display}");
+            println!("{display}");
+        }
+        Commands::Restart => {
+            let choice = choose_command(infos.titles());
+            if choice == -1 {
+                eprintln!("You have not choose a task");
+                return Ok(());
+            }
+            let info = &infos.0[choice as usize];
+            info.try_restart().await;
+        }
+    }
+
     Ok(())
+}
+
+fn choose_command<'a, T>(titles: T) -> i32
+where
+    T: Iterator<Item = &'a str>,
+{
+    let Ok(index) = FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Now to choose a command")
+        .default(0)
+        .items(titles)
+        .interact()
+    else {
+        return -1;
+    };
+    index as i32
 }

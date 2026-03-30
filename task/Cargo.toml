@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.102"
-clap = { version = "4.6.0", features = ["derive"] }
+clap.workspace = true
 common.workspace = true
 quick-xml.workspace = true
 regex.workspace = true
