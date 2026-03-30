@@ -10,3 +10,5 @@ thiserror.workspace = true
 tokio.workspace = true
 zbus.workspace = true
 common.workspace = true
+cli-table = "0.5.0"
+anyhow = "1.0.102"

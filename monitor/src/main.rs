@@ -1,3 +1,5 @@
+use cli_table::format::Justify;
+use cli_table::{Cell, CellStruct, Style, Table};
 use zbus::proxy;
 
 use common::*;
@@ -120,9 +122,20 @@ trait Systemd1Unit {
     fn id(&self) -> zbus::Result<String>;
 }
 #[tokio::main]
-async fn main() {
-    let infos = UnitInterfaceInfoVec::refresh().await.unwrap();
-    for info in infos.iter() {
-        println!("{info:?}");
-    }
+async fn main() -> anyhow::Result<()> {
+    let infos = UnitInterfaceInfoVec::refresh().await?;
+    let display = infos
+        .iter()
+        .map(|info| vec![info.task.clone().cell(), info.time.clone().cell()])
+        .collect::<Vec<Vec<CellStruct>>>()
+        .table()
+        .title(vec![
+            "Task".cell().justify(Justify::Left).bold(true),
+            "Time".cell().justify(Justify::Center).bold(true),
+        ])
+        .bold(true)
+        .display()?;
+
+    println!("{display}");
+    Ok(())
 }
