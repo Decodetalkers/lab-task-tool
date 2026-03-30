@@ -63,8 +63,14 @@ pub struct UnitInfo {
     id: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct SystemTask {
+    info: TaskInfo,
+    active_state: String,
+}
+
 #[derive(Debug, Clone, Default)]
-pub struct UnitInterfaceInfoVec(Vec<TaskInfo>);
+pub struct UnitInterfaceInfoVec(Vec<SystemTask>);
 
 impl UnitInterfaceInfoVec {
     pub fn new() -> Self {
@@ -75,7 +81,7 @@ impl UnitInterfaceInfoVec {
         self.0.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &TaskInfo> {
+    pub fn iter(&self) -> impl Iterator<Item = &SystemTask> {
         self.0.iter()
     }
 
@@ -91,10 +97,14 @@ impl UnitInterfaceInfoVec {
                 .build()
                 .await?;
             let id = unitbus.id().await?;
+            let active_state = unitbus.active_state().await?;
             let Some(task) = get_task_information(&id) else {
                 continue;
             };
-            unitvec.push(task);
+            unitvec.push(SystemTask {
+                info: task,
+                active_state,
+            });
         }
         Ok(Self(unitvec))
     }
@@ -120,18 +130,27 @@ trait Systemd1Unit {
     fn collect_mode(&self) -> zbus::Result<String>;
     #[zbus(property)]
     fn id(&self) -> zbus::Result<String>;
+    #[zbus(property)]
+    fn active_state(&self) -> zbus::Result<String>;
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let infos = UnitInterfaceInfoVec::refresh().await?;
     let display = infos
         .iter()
-        .map(|info| vec![info.task.clone().cell(), info.time.clone().cell()])
+        .map(|info| {
+            vec![
+                info.info.task.clone().cell(),
+                info.info.time.clone().cell(),
+                info.active_state.clone().cell(),
+            ]
+        })
         .collect::<Vec<Vec<CellStruct>>>()
         .table()
         .title(vec![
             "Task".cell().justify(Justify::Left).bold(true),
             "Time".cell().justify(Justify::Center).bold(true),
+            "Status".cell().justify(Justify::Center).bold(true),
         ])
         .bold(true)
         .display()?;
