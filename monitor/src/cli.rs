@@ -11,7 +11,7 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Clones repos
-    Display,
+    Status,
     /// Compare two commits
     Restart,
 }

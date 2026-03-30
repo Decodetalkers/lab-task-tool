@@ -18,13 +18,17 @@ pub fn gen_task(task_name: &str) -> String {
 pub struct TaskInfo {
     pub task: String,
     pub time: String,
+    pub id: String,
 }
 
 pub fn get_task_information(id: &str) -> Option<TaskInfo> {
     let caps = TASK_REGEX.captures(id)?;
+    let task = caps["TaskId"].to_string();
+    let time = caps["StartTime"].to_string();
     Some(TaskInfo {
-        task: caps["TaskId"].to_string(),
-        time: caps["StartTime"].to_string(),
+        id: format!("{task} {time}"),
+        task,
+        time,
     })
 }
 

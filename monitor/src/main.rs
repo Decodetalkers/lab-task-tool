@@ -76,8 +76,8 @@ pub struct SystemTask<'a> {
     dbus: Systemd1UnitProxy<'a>,
 }
 impl<'a> SystemTask<'a> {
-    pub async fn try_restart(&self) {
-        let _ = self.dbus.try_restart("replace").await;
+    pub async fn restart(&self) {
+        self.dbus.restart("replace").await.unwrap();
     }
 }
 
@@ -89,8 +89,8 @@ impl<'a> UnitInterfaceInfoVec<'a> {
         Self(Vec::new())
     }
 
-    pub fn titles(&'_ self) -> impl Iterator<Item = &'_ str> {
-        self.0.iter().map(|t| t.info.task.as_str()).into_iter()
+    pub fn ids(&'_ self) -> impl Iterator<Item = &'_ str> {
+        self.0.iter().map(|t| t.info.id.as_str()).into_iter()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -150,7 +150,7 @@ trait Systemd1Unit {
     #[zbus(property)]
     fn active_state(&self) -> zbus::Result<String>;
 
-    fn try_restart(&self, mode: &str) -> zbus::Result<OwnedObjectPath>;
+    fn restart(&self, mode: &str) -> zbus::Result<OwnedObjectPath>;
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -158,7 +158,7 @@ async fn main() -> anyhow::Result<()> {
     use cli::Commands;
     let infos = UnitInterfaceInfoVec::refresh().await?;
     match arg.command {
-        Commands::Display => {
+        Commands::Status => {
             let display = infos
                 .iter()
                 .map(|info| {
@@ -181,13 +181,13 @@ async fn main() -> anyhow::Result<()> {
             println!("{display}");
         }
         Commands::Restart => {
-            let choice = choose_command(infos.titles());
+            let choice = choose_command(infos.ids());
             if choice == -1 {
                 eprintln!("You have not choose a task");
                 return Ok(());
             }
             let info = &infos.0[choice as usize];
-            info.try_restart().await;
+            info.restart().await;
         }
     }
 
