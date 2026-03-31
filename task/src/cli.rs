@@ -18,6 +18,8 @@ fn get_styles() -> Styles {
 pub struct Cli {
     #[arg(long)]
     pub task: String,
+    #[arg(long)]
+    pub log_file: Option<String>,
     #[arg(long, value_delimiter = ' ', num_args = 1..)]
     pub commands: Vec<String>,
 }

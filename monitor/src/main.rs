@@ -90,7 +90,7 @@ impl<'a> UnitInterfaceInfoVec<'a> {
     }
 
     pub fn ids(&'_ self) -> impl Iterator<Item = &'_ str> {
-        self.0.iter().map(|t| t.info.id.as_str()).into_iter()
+        self.0.iter().map(|t| t.info.id.as_str())
     }
 
     pub fn is_empty(&self) -> bool {

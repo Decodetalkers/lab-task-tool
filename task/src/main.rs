@@ -141,15 +141,24 @@ async fn get_connection() -> zbus::Result<zbus::Connection> {
     }
 }
 
-pub async fn launch(id: &str, cmd: &[String], description: &str) -> anyhow::Result<()> {
+pub async fn launch(
+    id: &str,
+    mut cmd: Vec<String>,
+    description: &str,
+    log_file: Option<String>,
+) -> anyhow::Result<()> {
     let conn = get_connection().await?;
     let systemd = Systemd1ManagerProxy::builder(&conn)
         .destination("org.freedesktop.systemd1")?
         .build()
         .await?;
 
-    let mut new_cmd = vec!["bash".to_string()];
-    new_cmd.extend(cmd.iter().cloned());
+    let mut new_cmd = vec!["/bin/sh".to_string(), "-c".to_string()];
+    if let Some(log_file) = log_file {
+        cmd.extend([">".to_string(), log_file]);
+    }
+    let cmd = cmd.join(" ");
+    new_cmd.push(cmd);
     let path = std::env::current_dir()?;
     let service = common::gen_task(&id);
 
@@ -160,8 +169,8 @@ pub async fn launch(id: &str, cmd: &[String], description: &str) -> anyhow::Resu
             Properties {
                 description,
                 exec_start: vec![ExecCommand {
-                    path: cmd[0].clone(),
-                    args: cmd.to_owned(),
+                    path: "/bin/sh".to_string(),
+                    args: new_cmd,
                     unclean: false,
                 }],
                 environment: vec![],
@@ -177,11 +186,13 @@ async fn main() {
     let cli = Cli::parse();
     let task = cli.task;
     let mut commands = cli.commands;
+    let log_file = cli.log_file;
     commands[0] = which(&commands[0]).unwrap().to_string_lossy().to_string();
     launch(
         &task,
-        &commands,
+        commands,
         format!("lab experiment, task: {task}").as_str(),
+        log_file,
     )
     .await
     .unwrap();
