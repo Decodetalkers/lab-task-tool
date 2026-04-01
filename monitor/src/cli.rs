@@ -10,12 +10,12 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Clones repos
+    /// Check the status of the tasks
     Status,
-    /// Compare two commits
+    /// Restart a task
     Restart,
     /// Reset failed task
     ResetFailed,
-    /// Reset failed task
+    /// Stop a task
     Stop,
 }
