@@ -14,4 +14,6 @@ pub enum Commands {
     Status,
     /// Compare two commits
     Restart,
+    /// Reset failed task
+    ResetFailed,
 }

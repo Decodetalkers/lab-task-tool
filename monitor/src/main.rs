@@ -74,10 +74,14 @@ pub struct SystemTask<'a> {
     info: TaskInfo,
     active_state: String,
     dbus: Systemd1UnitProxy<'a>,
+    service: String,
 }
 impl<'a> SystemTask<'a> {
     pub async fn restart(&self) {
         self.dbus.restart("replace").await.unwrap();
+    }
+    pub fn is_failed(&self) -> bool {
+        self.active_state == "failed"
     }
 }
 
@@ -121,6 +125,7 @@ impl<'a> UnitInterfaceInfoVec<'a> {
                 info: task,
                 active_state,
                 dbus: unitbus,
+                service: id,
             });
         }
         Ok(Self(unitvec))
@@ -188,6 +193,20 @@ async fn main() -> anyhow::Result<()> {
             }
             let info = &infos.0[choice as usize];
             info.restart().await;
+        }
+        Commands::ResetFailed => {
+            let failed_units: Vec<&SystemTask<'_>> =
+                infos.iter().filter(|task| task.is_failed()).collect();
+            let choice = choose_command(failed_units.iter().map(|task| task.info.id.as_str()));
+            if choice == -1 {
+                eprintln!("You have not choose a task");
+                return Ok(());
+            }
+            let server_file = failed_units[choice as usize].service.as_str();
+            std::process::Command::new("systemctl")
+                .args(["--user", "reset-failed", server_file])
+                .spawn()?
+                .wait()?;
         }
     }
 
