@@ -75,6 +75,7 @@ pub struct SystemTask<'a> {
     info: TaskInfo,
     active_state: String,
     dbus: Systemd1UnitProxy<'a>,
+    service: String,
 }
 impl<'a> SystemTask<'a> {
     pub async fn restart(&self) {
@@ -131,6 +132,7 @@ impl<'a> UnitInterfaceInfoVec<'a> {
                 info: task,
                 active_state,
                 dbus: unitbus,
+                service: id,
             });
         }
         Ok(Self(unitvec))
@@ -226,6 +228,20 @@ async fn main() -> anyhow::Result<()> {
                 return Ok(());
             }
             infos[choice as usize].stop().await;
+        }
+        Commands::JournalLog => {
+            let choice = choose_command(infos.ids());
+            if choice == -1 {
+                eprintln!("You have not choose a task");
+                return Ok(());
+            }
+            let service = infos[choice as usize].service.as_str();
+
+            let output = std::process::Command::new("journalctl")
+                .args(["--user-unit", service])
+                .output()?;
+            let log = String::from_utf8_lossy(&output.stdout);
+            println!("{log}");
         }
     }
 

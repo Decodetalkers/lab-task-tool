@@ -18,4 +18,6 @@ pub enum Commands {
     ResetFailed,
     /// Stop a task
     Stop,
+    /// Read JournalLog
+    JournalLog
 }
