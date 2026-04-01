@@ -10,6 +10,7 @@ use zbus::proxy;
 use common::*;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
+use std::ops::Index;
 use std::sync::OnceLock;
 use zbus::zvariant::OwnedObjectPath;
 
@@ -74,11 +75,16 @@ pub struct SystemTask<'a> {
     info: TaskInfo,
     active_state: String,
     dbus: Systemd1UnitProxy<'a>,
-    service: String,
 }
 impl<'a> SystemTask<'a> {
     pub async fn restart(&self) {
         self.dbus.restart("replace").await.unwrap();
+    }
+    pub async fn stop(&self) {
+        self.dbus.stop("replace").await.unwrap();
+    }
+    pub async fn reset_failed(&self) {
+        self.dbus.reset_failed().await.unwrap();
     }
     pub fn is_failed(&self) -> bool {
         self.active_state == "failed"
@@ -125,10 +131,17 @@ impl<'a> UnitInterfaceInfoVec<'a> {
                 info: task,
                 active_state,
                 dbus: unitbus,
-                service: id,
             });
         }
         Ok(Self(unitvec))
+    }
+}
+
+impl<'a> Index<usize> for UnitInterfaceInfoVec<'a> {
+    type Output = SystemTask<'a>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
     }
 }
 
@@ -156,6 +169,8 @@ trait Systemd1Unit {
     fn active_state(&self) -> zbus::Result<String>;
 
     fn restart(&self, mode: &str) -> zbus::Result<OwnedObjectPath>;
+    fn stop(&self, mode: &str) -> zbus::Result<OwnedObjectPath>;
+    fn reset_failed(&self) -> zbus::Result<()>;
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -191,7 +206,7 @@ async fn main() -> anyhow::Result<()> {
                 eprintln!("You have not choose a task");
                 return Ok(());
             }
-            let info = &infos.0[choice as usize];
+            let info = &infos[choice as usize];
             info.restart().await;
         }
         Commands::ResetFailed => {
@@ -202,11 +217,15 @@ async fn main() -> anyhow::Result<()> {
                 eprintln!("You have not choose a task");
                 return Ok(());
             }
-            let server_file = failed_units[choice as usize].service.as_str();
-            std::process::Command::new("systemctl")
-                .args(["--user", "reset-failed", server_file])
-                .spawn()?
-                .wait()?;
+            failed_units[choice as usize].reset_failed().await;
+        }
+        Commands::Stop => {
+            let choice = choose_command(infos.ids());
+            if choice == -1 {
+                eprintln!("You have not choose a task");
+                return Ok(());
+            }
+            infos[choice as usize].stop().await;
         }
     }
 

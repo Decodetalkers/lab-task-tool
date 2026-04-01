@@ -16,4 +16,6 @@ pub enum Commands {
     Restart,
     /// Reset failed task
     ResetFailed,
+    /// Reset failed task
+    Stop,
 }
